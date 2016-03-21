@@ -1,0 +1,21 @@
+
+OASISFormat: 0.4
+Name:        pendulum_tests
+Version:     0.01
+Synopsis:    pendulum testing against Esterel tests 
+Authors:     Remy El Sibaïe
+License:     MIT
+Plugins:     META (0.4), DevFiles (0.4)
+BuildTools:  ocamlbuild
+
+Executable esterel_parser
+  Path:           parser
+  Install: true
+  BuildDepends:
+    compiler-libs.common,
+    pendulum.compiler,
+    menhirLib
+  MainIs:       main.ml
+  CompiledObject: best
+
+    

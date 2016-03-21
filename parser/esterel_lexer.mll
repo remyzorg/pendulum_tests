@@ -15,6 +15,7 @@ let id_or_keyword =
     ; "input", INPUT
     ; "output", OUTPUT
     ; "end", END
+    ; "in", IN
     ; "constant", CONSTANT
 
     ; "emit", EMIT
@@ -114,6 +115,8 @@ rule token = parse
       { COMMA }
   | ';'
       { SEMICOLON }
+  | ':'
+      { COLON }
   | '.'
       { DOT }
   | "->"

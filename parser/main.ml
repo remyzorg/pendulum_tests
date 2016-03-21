@@ -27,6 +27,7 @@ let () =
   let c = open_in file in
   let lb = Lexing.from_channel c in
   try
-    let p = Esterel_parser.modules Esterel_lexer.token lb in
+    let p = Esterel_parser.emodules Esterel_lexer.token lb in
+    assert false
   with
   | _ -> assert false

@@ -68,6 +68,7 @@
 %right EQ
 %left OR /* || */
 %left AND     /* && */
+%left SEMICOLON
 %left EQOP                   /* == != */
 %left COMP                   /* < <= > >= */
 %left PLUS MINUS             /* + - */
@@ -75,6 +76,7 @@
 %right ustar uminus uplus PLUSPLUS MINUSMINUS BANG AMPERSAND
                              /* + - ++ -- ! & */
 %left DOT ARROW LSQUARE par_expr
+
 
 
 %start emodules
@@ -120,6 +122,7 @@ program:
       { p }
     | TRAP; id = ident; IN; p = program; END; TRAP
       { loc @@ Ast.Trap (Label id, p) }
+
 
  /*   | SUSPEND; p = program; WHEN; id = ident
       { loc @@  }

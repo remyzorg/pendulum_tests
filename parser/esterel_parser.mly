@@ -37,7 +37,6 @@
 %token DO
 %token IN
 %token WHEN
-%token CASE
 %token CONSTANT
 %token EMIT
 %token LOOP
@@ -54,6 +53,8 @@
 %token NOTHING
 %token PAUSE
 %token HALT
+%token THEN
+%token ELSE
 
 
 %token LPAR RPAR LBRACE RBRACE LSQUARE RSQUARE
@@ -71,6 +72,7 @@
 %token EQ
 %token COLONEQ
 %token OR
+%token CASE
 %token PLUS MINUS
 %token STAR SLASH PERCENT
 %token PLUSPLUS MINUSMINUS IMARK
@@ -79,6 +81,7 @@
 %nonassoc ELSE
 
 %right EQ
+%left CASE
 %left OR /* || */
 %left SEMICOLON
 %left COLONEQ                   /* ==:  */
@@ -86,7 +89,7 @@
 %left COMP                   /* < <= > >= */
 %left PLUS MINUS             /* + - */
 %left STAR SLASH PERCENT     /* * / % */
-%right ustar uminus uplus PLUSPLUS MINUSMINUS
+%right uminus uplus PLUSPLUS MINUSMINUS
 /*
 %right AMPERSAND
 %left AND     &&
@@ -134,7 +137,7 @@ case:
       { EXTcase };
 
 test_presence:
-    | l = list(case) { EXTcases l }
+/*    | l = nonempty_list(case) { EXTcases l } */
     | id = ident { EXTsignal id }
 ;
 
@@ -148,33 +151,53 @@ expr:
 program:
     | NOTHING
       { loc Ast.Nothing }
+
     | LOOP; p = program; END
       { loc @@ Ast.Loop p }
+
     | p1 = program; SEMICOLON; p2 = program
       {loc @@ Ast.Seq (p1, p2)}
+
     | p1 = program; OR; p2 = program
       {loc @@ Ast.Par (p1, p2)}
+
     | p = program ; SEMICOLON
       { p }
+
     | TRAP; id = ident; IN; p = program; END; TRAP
       { loc @@ Ast.Trap (Label id, p) }
+
     | ABORT; p = program; WHEN; t = test_presence; END; ABORT;
       { loc @@ Ast.Abort (p, extract_test t) }
+
     | SUSPEND; p = program; WHEN; t = test_presence
       { loc @@ Ast.Suspend (p, extract_test t)}
+
     | lhs = ident; COLONEQ; rhs = ident
       { assert false (* not implemented yet *) }
+
     | EMIT; id = ident;
       { loc @@ Ast.Emit (mk_vid id Pendulum_ast.unit_expr) }
+
     | EMIT; id = ident; LPAR; e = expr; RPAR
       { loc @@ Ast.Emit (mk_vid id @@ Simpl_expr.to_pendulum e) }
 
     | EVERY; t = test_presence; DO; p = program; END; EVERY
       { loc @@ Ast.Every (extract_test t, p) }
 
+    | EXIT; id = ident
+      { loc @@ Ast.Exit (Label id) }
 
+    | HALT
+      { loc @@ Ast.Halt  }
 
+    | PRESENT; t = test_presence; THEN; p_then = program
+                                ; ELSE; p_else = program;
+                                ; END; PRESENT;
+      { loc @@ Ast.Present ( extract_test t, p_then, p_else) }
 
-
+    | PRESENT; t = test_presence; THEN; p_then = program
+                                ; END; PRESENT;
+      { loc @@ Ast.Present_then (extract_test t, p_then) }
 
 ;

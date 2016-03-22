@@ -3,15 +3,23 @@
     open Esterel_ast
     open Pendulum_ast
 
-    module Ast = Pendulum_ast.Ast.Derived
+    module Ast = Pendulum_ast.Derived
+
 
     let mk_loc e l = { loc = l; content = e }
 
     let loc e =
-      mk_loc e (Parsing.symbol_start_pos (),Parsing.symbol_end_pos())
+      mk_loc e @@ Location.symbol_rloc ()
 
     let loc_dummy e =
-      mk_loc e (Lexing.dummy_pos, Lexing.dummy_pos)
+      mk_loc e Location.none
+
+
+    let extract_test = function
+      | EXTsignal s -> s, None, None
+      | EXTcases l -> failwith "Not implemented yet"
+
+
 
 %}
 
@@ -20,7 +28,6 @@
 %token <int32> INTEGER
 %token <string> STRING
 
-/* Mots clés */
 
 %token MODULE
 %token INPUT
@@ -29,6 +36,8 @@
 %token END
 %token DO
 %token IN
+%token WHEN
+%token CASE
 %token CONSTANT
 %token EMIT
 %token LOOP
@@ -41,7 +50,6 @@
 %token IFSTATEMENT
 %token PRESENT
 %token PROCEDURECALL
-%token ASSIGNEMENT
 %token SUSTAIN
 %token NOTHING
 %token PAUSE
@@ -49,33 +57,43 @@
 
 
 %token LPAR RPAR LBRACE RBRACE LSQUARE RSQUARE
-%token SEMICOLON COLON COMMA DOT ARROW
+%token SEMICOLON COLON COMMA DOT
 %token EOF
 
 
-%token EQ
-%token OR
+/* %token <Ast.binop> EQOP
+%token <Ast.binop> COMP
+%token AMPERSAND
 %token AND
-/* %token <Ast.binop> EQOP */
-/* %token <Ast.binop> COMP */
+%token ARROW
+*/
+
+%token EQ
+%token COLONEQ
+%token OR
 %token PLUS MINUS
 %token STAR SLASH PERCENT
-%token PLUSPLUS MINUSMINUS BANG IMARK AMPERSAND
+%token PLUSPLUS MINUSMINUS IMARK
 
 %nonassoc THEN
 %nonassoc ELSE
 
 %right EQ
 %left OR /* || */
-%left AND     /* && */
 %left SEMICOLON
+%left COLONEQ                   /* ==:  */
 %left EQOP                   /* == != */
 %left COMP                   /* < <= > >= */
 %left PLUS MINUS             /* + - */
 %left STAR SLASH PERCENT     /* * / % */
-%right ustar uminus uplus PLUSPLUS MINUSMINUS BANG AMPERSAND
+%right ustar uminus uplus PLUSPLUS MINUSMINUS
+/*
+%right AMPERSAND
+%left AND     &&
+%left ARROW
+*/
                              /* + - ++ -- ! & */
-%left DOT ARROW LSQUARE par_expr
+%left DOT LSQUARE par_expr
 
 
 
@@ -105,9 +123,27 @@ decl_spec:
 ;
 
 decl:
-    | spec = decl_spec ; name = ident; _t = IDENT; SEMICOLON
+    | spec = decl_spec ; name = ident; COLON; _t = IDENT; SEMICOLON
+      { {spec; name} }
+    | spec = decl_spec ; name = ident; SEMICOLON
       { {spec; name} }
 ;
+
+case:
+    | CASE; id = ident; DO; p = program
+      { EXTcase };
+
+test_presence:
+    | l = list(case) { EXTcases l }
+    | id = ident { EXTsignal id }
+;
+
+expr:
+    | id = ident { Simpl_expr.EXPident id }
+    | IMARK; e = expr { Simpl_expr.EXPvalue e }
+    | fn = ident ; LPAR; e = expr; RPAR { Simpl_expr.EXPapp (fn, e) }
+;
+
 
 program:
     | NOTHING
@@ -122,11 +158,23 @@ program:
       { p }
     | TRAP; id = ident; IN; p = program; END; TRAP
       { loc @@ Ast.Trap (Label id, p) }
+    | ABORT; p = program; WHEN; t = test_presence; END; ABORT;
+      { loc @@ Ast.Abort (p, extract_test t) }
+    | SUSPEND; p = program; WHEN; t = test_presence
+      { loc @@ Ast.Suspend (p, extract_test t)}
+    | lhs = ident; COLONEQ; rhs = ident
+      { assert false (* not implemented yet *) }
+    | EMIT; id = ident;
+      { loc @@ Ast.Emit (mk_vid id Pendulum_ast.unit_expr) }
+    | EMIT; id = ident; LPAR; e = expr; RPAR
+      { loc @@ Ast.Emit (mk_vid id @@ Simpl_expr.to_pendulum e) }
+
+    | EVERY; t = test_presence; DO; p = program; END; EVERY
+      { loc @@ Ast.Every (extract_test t, p) }
 
 
- /*   | SUSPEND; p = program; WHEN; id = ident
-      { loc @@  }
-      */
+
+
 
 
 ;

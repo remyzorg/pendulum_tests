@@ -15,7 +15,10 @@ let id_or_keyword =
     ; "input", INPUT
     ; "output", OUTPUT
     ; "end", END
+    ; "when", WHEN
+    ; "case", CASE
     ; "in", IN
+    ; "do", DO
     ; "constant", CONSTANT
 
     ; "emit", EMIT
@@ -29,7 +32,6 @@ let id_or_keyword =
     ; "ifstatement", IFSTATEMENT
     ; "present", PRESENT
     ; "procedureCall", PROCEDURECALL
-    ; "assignement", ASSIGNEMENT
     ; "sustain", SUSTAIN
     ; "nothing", NOTHING
     ; "pause", PAUSE
@@ -111,16 +113,14 @@ rule token = parse
       { LSQUARE }
   | ']'
       { RSQUARE }
-  | ','
-      { COMMA }
+  (* | ',' *)
+  (*     { COMMA } *)
   | ';'
       { SEMICOLON }
   | ':'
       { COLON }
   | '.'
       { DOT }
-  | "->"
-      { ARROW }
   | "-"
       { MINUS }
   | "+"
@@ -131,18 +131,16 @@ rule token = parse
       { SLASH }
   | "%"
       { PERCENT }
-  | "!"
-      { BANG }
+  (* | "!" *)
+  (*     { BANG } *)
   | "!"
       { IMARK }
-  | "&"
-      { AMPERSAND }
-  | "&&"
-      { AND }
   | "||"
       { OR }
   | "="
       { EQ }
+  | ":="
+      { COLONEQ }
   (* | ">" *)
   (*     { COMP Bgt } *)
   (* | ">=" *)

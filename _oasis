@@ -13,6 +13,7 @@ Executable esterel_parser
   Install: true
   BuildDepends:
     compiler-libs.common,
+    ppx_tools.metaquot,
     pendulum.compiler,
     menhirLib
   MainIs:       main.ml

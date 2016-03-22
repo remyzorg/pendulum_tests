@@ -1,21 +1,24 @@
+module Sync2ml = Pendulum_compiler.Sync2ml
+
+include Sync2ml.Ast
+
+let unit_expr = [%expr ()]
+
+module Simpl_expr = struct
+
+  type esterel_expr =
+    | EXPident of ident
+    | EXPapp of ident * esterel_expr
+    | EXPvalue of esterel_expr
+
+  let rec to_pendulum = function
+    | EXPident id -> Sync2ml.Ocaml_gen.mk_ident id
+    | EXPapp (fn, exp) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_pendulum exp]]
+    | EXPvalue vexpr -> [%expr !![%e to_pendulum vexpr]]
 
 
 
-(* type PAst = Pendulum_compiler.Ast *)
-
-module EsterelLoc = struct
-  type t = Lexing.position * Lexing.position
-  let none = Lexing.dummy_pos, Lexing.dummy_pos
 end
 
-module Expression = struct
-  type t = Parsetree.expression
-  type core_type = Parsetree.core_type
-  let print = Pprintast.expression
-  module Location = EsterelLoc
-end
 
 
-module Ast = Pendulum_compiler.Ast.Make (Expression)
-
-include Ast

@@ -30,4 +30,11 @@ let () =
     let p = Esterel_parser.emodules Esterel_lexer.token lb in
     assert false
   with
-  | _ -> assert false
+  | Esterel_lexer.Lexical_error s ->
+    report_loc (lexeme_start_p lb, lexeme_end_p lb);
+    eprintf "lexical error: %s\n@." s;
+    exit 1
+  | Parsing.Parse_error ->
+    report_loc (lexeme_start_p lb, lexeme_end_p lb);
+    eprintf "Syntax error\n@.";
+	  exit 1

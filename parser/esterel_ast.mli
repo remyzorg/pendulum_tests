@@ -20,7 +20,8 @@ type case = EXTcase
 
 type extended_tests =
   | EXTsignal of ident
-  | EXTcases of case list
+  | EXTnot of extended_tests
+  (* | EXTcases of case list *)
 
 type decls = decl list
 

@@ -2,6 +2,16 @@ module Sync2ml = Pendulum_compiler.Sync2ml
 
 include Sync2ml.Ast
 
+type test_error = Not_implemeted of string
+
+exception Test_error of error
+
+let print_exception fmt = function
+  | Not_implemeted s -> Format.fprintf fmt "Not implemented yet : %s" s
+
+let test_error e = raise (Test_error e)
+
+
 let unit_expr = [%expr ()]
 
 module Simpl_expr = struct

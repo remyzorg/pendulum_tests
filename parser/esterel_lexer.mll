@@ -19,6 +19,7 @@ let id_or_keyword =
     ; "case", CASE
     ; "in", IN
     ; "do", DO
+    ; "not", NOT
     ; "constant", CONSTANT
     ; "procedure", PROCEDURE
 
@@ -29,6 +30,7 @@ let id_or_keyword =
     ; "trap", TRAP
     ; "exit", EXIT
     ; "suspend", SUSPEND
+    ; "signal", SUSPEND
     ; "abort", ABORT
     ; "repeat", REPEAT
     ; "if", IF

@@ -28,7 +28,7 @@ let () =
   let lb = Lexing.from_channel c in
   try
     let p = Esterel_parser.emodules Esterel_lexer.token lb in
-    assert false
+    close_in c;
   with
   | Esterel_lexer.Lexical_error s ->
     report_loc (lexeme_start_p lb, lexeme_end_p lb);

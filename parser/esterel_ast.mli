@@ -1,11 +1,14 @@
 
 open Pendulum_ast
 
+
+
 type decl_spec =
   | Doutput
   | Dinput
   | Dinputoutput
   | Dconstant
+  | Dprocedure of ident list * ident list
 
 type decl = {
   spec : decl_spec;

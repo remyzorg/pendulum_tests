@@ -25,13 +25,14 @@
 
 
 %token <string> IDENT
-%token <int32> INTEGER
+%token <int> INTEGER
 %token <string> STRING
 
 
 %token MODULE
 %token INPUT
 %token OUTPUT
+%token PROCEDURE
 %token INPUTOUTPUT
 %token END
 %token DO
@@ -41,62 +42,61 @@
 %token EMIT
 %token LOOP
 %token EVERY
+%token TIMES
 %token TRAP
 %token EXIT
 %token SUSPEND
 %token ABORT
 %token REPEAT
-%token IFSTATEMENT
+
 %token PRESENT
-%token PROCEDURECALL
-%token SUSTAIN
+%token CALL
 %token NOTHING
 %token PAUSE
 %token HALT
 %token THEN
+%token IF
+%token ELSIF
 %token ELSE
 
 
-%token LPAR RPAR LBRACE RBRACE LSQUARE RSQUARE
-%token SEMICOLON COLON COMMA DOT
+%token LPAR RPAR
+%token SEMICOLON COLON COMMA 
 %token EOF
 
 
 /* %token <Ast.binop> EQOP
 %token <Ast.binop> COMP
 %token AMPERSAND
-%token AND
+%token AND DOT
 %token ARROW
+%left COMP
+%right EQ
+%token EQ
+%token LBRACE RBRACE LSQUARE RSQUARE
 */
 
-%token EQ
 %token COLONEQ
 %token OR
 %token CASE
 %token PLUS MINUS
-%token STAR SLASH PERCENT
-%token PLUSPLUS MINUSMINUS IMARK
+%token IMARK
 
-%nonassoc THEN
-%nonassoc ELSE
-
-%right EQ
-%left CASE
+%right IMARK
 %left OR /* || */
 %left SEMICOLON
-%left COLONEQ                   /* ==:  */
-%left EQOP                   /* == != */
-%left COMP                   /* < <= > >= */
 %left PLUS MINUS             /* + - */
-%left STAR SLASH PERCENT     /* * / % */
-%right uminus uplus PLUSPLUS MINUSMINUS
+
 /*
+%left COLONEQ
+%nonassoc THEN
+%nonassoc ELSE
+%left CASE
 %right AMPERSAND
 %left AND     &&
 %left ARROW
+%left LSQUARE par_expr
 */
-                             /* + - ++ -- ! & */
-%left DOT LSQUARE par_expr
 
 
 
@@ -125,14 +125,19 @@ decl_spec:
     | INPUTOUTPUT { Dinputoutput }
 ;
 
+
 decl:
     | spec = decl_spec ; name = ident; COLON; _t = IDENT; SEMICOLON
       { {spec; name} }
     | spec = decl_spec ; name = ident; SEMICOLON
       { {spec; name} }
+    | PROCEDURE; name=ident; LPAR; outs = separated_list (COMMA, ident); RPAR
+                         ; LPAR; ins = separated_list (COMMA, ident); RPAR
+                         ; SEMICOLON
+      { { spec = Dprocedure (ins, outs); name } }
 ;
 
-case:
+_case:
     | CASE; id = ident; DO; p = program
       { EXTcase };
 
@@ -142,15 +147,29 @@ test_presence:
 ;
 
 expr:
-    | id = ident { Simpl_expr.EXPident id }
-    | IMARK; e = expr { Simpl_expr.EXPvalue e }
-    | fn = ident ; LPAR; e = expr; RPAR { Simpl_expr.EXPapp (fn, e) }
+    | id = ident { loc @@ Simpl_expr.EXPident id }
+    | IMARK; e = expr { loc @@ Simpl_expr.EXPvalue e }
+    | fn = ident ; LPAR; e = expr; RPAR { loc @@ Simpl_expr.EXPapp (fn, e) }
+    | i = INTEGER { loc @@ Simpl_expr.(EXPlit (Linteger i)) }
+    | s = STRING { loc @@ Simpl_expr.(EXPlit (Lstring s)) }
+    | e1 = expr; PLUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPplus, e1, e2)) }
+    | e1 = expr; MINUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPminus, e1, e2)) }
+;
+
+
+elsif:
+    | ELSIF; e = expr; THEN p = program
+      { (e, p) }
 ;
 
 
 program:
     | NOTHING
       { loc Ast.Nothing }
+
+
+    | PAUSE
+      { loc Ast.Pause }
 
     | LOOP; p = program; END
       { loc @@ Ast.Loop p }
@@ -192,12 +211,33 @@ program:
       { loc @@ Ast.Halt  }
 
     | PRESENT; t = test_presence; THEN; p_then = program
-                                ; ELSE; p_else = program;
+                                ; p_else = option (ELSE; p_else = program { p_else });
                                 ; END; PRESENT;
-      { loc @@ Ast.Present ( extract_test t, p_then, p_else) }
+      { loc @@ match p_else with
+               | Some p_else -> Ast.Present (extract_test t, p_then, p_else)
+               | None -> Ast.Present_then (extract_test t, p_then)
+      }
 
-    | PRESENT; t = test_presence; THEN; p_then = program
-                                ; END; PRESENT;
-      { loc @@ Ast.Present_then (extract_test t, p_then) }
+    (* | PRESENT; t = test_presence; THEN; p_then = program *)
+    (*                             ; END; PRESENT; *)
+    (*   { loc @@ Ast.Present_then (extract_test t, p_then) } *)
+
+    | IF; e = expr; THEN
+                  ; p_then = program
+                  ; elsifs = list(elsif)
+                  ; p_else = option (ELSE; p_else = program { p_else } )
+                  ; END; IF
+      { assert false (* not implemented yet *) }
+
+
+    | CALL; _id=ident
+          ; LPAR; _outs = separated_list(COMMA, ident); RPAR
+          ; LPAR; _ins = separated_list(COMMA, expr); RPAR
+      { assert false (* not implemented yet *) }
+
+    | REPEAT; i = INTEGER; TIMES; p = program; END; REPEAT
+       { assert false (*not implemented yet *) }
+
+
 
 ;

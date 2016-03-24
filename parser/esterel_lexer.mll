@@ -20,8 +20,10 @@ let id_or_keyword =
     ; "in", IN
     ; "do", DO
     ; "constant", CONSTANT
+    ; "procedure", PROCEDURE
 
     ; "emit", EMIT
+    ; "times", TIMES
     ; "loop", LOOP
     ; "every", EVERY
     ; "trap", TRAP
@@ -29,10 +31,10 @@ let id_or_keyword =
     ; "suspend", SUSPEND
     ; "abort", ABORT
     ; "repeat", REPEAT
-    ; "ifstatement", IFSTATEMENT
+    ; "if", IF
+    ; "elsif", ELSIF
     ; "present", PRESENT
-    ; "procedureCall", PROCEDURECALL
-    ; "sustain", SUSTAIN
+    ; "call", CALL
     ; "nothing", NOTHING
     ; "pause", PAUSE
     ; "halt", HALT
@@ -92,53 +94,53 @@ rule token = parse
   | digit+ as s
       {
 	try
-	  INTEGER (Int32.of_string s)
+	  INTEGER (int_of_string s)
 	with _ ->
 	  raise (Lexical_error ("invalid integer constant '" ^ s ^ "'"))
       }
   | '\'' (char as s) '\''
-      { INTEGER (Int32.of_int (decode_char s)) }
+      { INTEGER (decode_char s) }
   | '\"'
       { Buffer.reset str_buff;
         string lexbuf }
-  | '{'
-      { LBRACE }
-  | '}'
-      { RBRACE }
+  (* | '{' *)
+  (*     { LBRACE } *)
+  (* | '}' *)
+  (*     { RBRACE } *)
   | '('
       { LPAR }
   | ')'
       { RPAR }
-  | '['
-      { LSQUARE }
-  | ']'
-      { RSQUARE }
+  (* | '[' *)
+  (*     { LSQUARE } *)
+  (* | ']' *)
+  (*     { RSQUARE } *)
   (* | ',' *)
   (*     { COMMA } *)
   | ';'
       { SEMICOLON }
   | ':'
       { COLON }
-  | '.'
-      { DOT }
+  (* | '.' *)
+  (*     { DOT } *)
   | "-"
       { MINUS }
   | "+"
       { PLUS }
-  | "*"
-      { STAR }
-  | "/"
-      { SLASH }
-  | "%"
-      { PERCENT }
+  (* | "*" *)
+  (*     { STAR } *)
+  (* | "/" *)
+  (*     { SLASH } *)
+  (* | "%" *)
+  (*     { PERCENT } *)
   (* | "!" *)
   (*     { BANG } *)
   | "!"
       { IMARK }
   | "||"
       { OR }
-  | "="
-      { EQ }
+  (* | "=" *)
+  (*     { EQ } *)
   | ":="
       { COLONEQ }
   (* | ">" *)
@@ -153,10 +155,10 @@ rule token = parse
   (*     { EQOP Beq } *)
   (* | "!=" *)
   (*     { EQOP Bneq } *)
-  | "++"
-      { PLUSPLUS }
-  | "--"
-      { MINUSMINUS }
+  (* | "++" *)
+  (*     { PLUSPLUS } *)
+  (* | "--" *)
+  (*     { MINUSMINUS } *)
   | eof
       { EOF }
   | _

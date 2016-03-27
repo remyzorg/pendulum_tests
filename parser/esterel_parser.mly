@@ -91,6 +91,8 @@
 
 %right IMARK
 %left OR /* || */
+%left AND
+%right NOT
 %left SEMICOLON
 %left PLUS MINUS             /* + - */
 
@@ -141,13 +143,10 @@ decl:
     | spec = decl_spec ; names = separated_nonempty_list(COMMA,
                       id = ident; option(COLON; t = IDENT { t }) { id }); SEMICOLON
         { Dvar {spec; names} }
-
     | PROCEDURE; name=ident; LPAR; outs = separated_list (COMMA, ident); RPAR
                          ; LPAR; ins = separated_list (COMMA, ident); RPAR
                          ; SEMICOLON
       { Dprocedure (name, ins, outs) }
-
-
     | RELATION; separated_nonempty_list(COMMA, signal_relation); SEMICOLON;
       { Pendulum_ast.(test_error (Not_implemeted "signal relations")) }
 
@@ -155,7 +154,6 @@ decl:
 
 case: CASE; t = test_presence; DO; p = program
         { assert false (* not implemented yet *) };
-
 
 
 test_presence:
@@ -231,10 +229,12 @@ program:
     | PRESENT; t = test_presence; p_then = option (THEN; p = program { p })
                                 ; p_else = option (ELSE; p = program { p })
                                 ; END; option (PRESENT)
-      { loc @@ match p_then, p_else with
-        | None, _ -> Pendulum_ast.(test_error (Not_implemeted "no then case"))
-        | Some p_then, Some p_else -> Ast.Present (extract_test t, p_then, p_else)
-        | Some p_then, None -> Ast.Present_then (extract_test t, p_then)
+      { let t = extract_test t in
+        loc @@ match p_then, p_else with
+        | None, Some p_else -> Ast.Present (t, loc @@ Ast.Nothing, p_else);
+        | Some p_then, Some p_else -> Ast.Present (t, p_then, p_else)
+        | Some p_then, None -> Ast.Present_then (t, p_then)
+        | None, None -> assert false
       }
 
     | AWAIT; t = test_presence

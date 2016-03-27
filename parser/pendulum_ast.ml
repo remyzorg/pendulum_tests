@@ -4,7 +4,7 @@ include Sync2ml.Ast
 
 type test_error = Not_implemeted of string
 
-exception Test_error of error
+exception Test_error of test_error
 
 let print_exception fmt = function
   | Not_implemeted s -> Format.fprintf fmt "Not implemented yet : %s" s
@@ -30,10 +30,18 @@ module Simpl_expr = struct
     | EXPlit of literal
     | EXPop of op * esterel_expr * esterel_expr
 
+
+  let lit_to_ocaml lit =
+    let open Ast_helper in
+    match lit with
+    | Lstring s -> Exp.constant (Asttypes.Const_string(s, None))
+    | Linteger i -> Exp.constant (Asttypes.Const_int i)
+
   let rec to_pendulum e = match e.content with
     | EXPident id -> Sync2ml.Ocaml_gen.mk_ident id
     | EXPapp (fn, exp) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_pendulum exp]]
     | EXPvalue vexpr -> [%expr !![%e to_pendulum vexpr]]
+    | EXPlit lit -> lit_to_ocaml lit
     | _ -> assert false (* not implemented yet *)
 
 

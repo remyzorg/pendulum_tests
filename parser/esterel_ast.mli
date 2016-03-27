@@ -8,13 +8,13 @@ type decl_spec =
   | Dinput
   | Dinputoutput
   | Dconstant
-  | Dprocedure of ident list * ident list
 
-type decl = {
+type decl_var = {
   spec : decl_spec;
-  name : ident;
+  names : ident list;
 }
 
+type decl = Dvar of decl_var | Dprocedure of ident * ident list * ident list
 
 type case = EXTcase
 

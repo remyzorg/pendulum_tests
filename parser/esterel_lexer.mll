@@ -18,6 +18,7 @@ let id_or_keyword =
     ; "when", WHEN
     ; "case", CASE
     ; "in", IN
+    ; "then", THEN
     ; "do", DO
     ; "not", NOT
     ; "constant", CONSTANT
@@ -30,9 +31,10 @@ let id_or_keyword =
     ; "trap", TRAP
     ; "exit", EXIT
     ; "suspend", SUSPEND
-    ; "signal", SUSPEND
+    ; "signal", SIGNAL
     ; "abort", ABORT
     ; "repeat", REPEAT
+    ; "await", AWAIT
     ; "if", IF
     ; "elsif", ELSIF
     ; "present", PRESENT
@@ -91,6 +93,8 @@ rule token = parse
       { comment lexbuf; token lexbuf }
   | "//" [^'\n']* ('\n' | eof)
       { newline lexbuf; token lexbuf }
+  | "%" [^'\n']* ('\n' | eof)
+      { newline lexbuf; token lexbuf }
   | ident
       { id_or_keyword (lexeme lexbuf) }
   | digit+ as s
@@ -105,64 +109,17 @@ rule token = parse
   | '\"'
       { Buffer.reset str_buff;
         string lexbuf }
-  (* | '{' *)
-  (*     { LBRACE } *)
-  (* | '}' *)
-  (*     { RBRACE } *)
-  | '('
-      { LPAR }
-  | ')'
-      { RPAR }
-  (* | '[' *)
-  (*     { LSQUARE } *)
-  (* | ']' *)
-  (*     { RSQUARE } *)
-  (* | ',' *)
-  (*     { COMMA } *)
-  | ';'
-      { SEMICOLON }
-  | ':'
-      { COLON }
-  (* | '.' *)
-  (*     { DOT } *)
-  | "-"
-      { MINUS }
-  | "+"
-      { PLUS }
-  (* | "*" *)
-  (*     { STAR } *)
-  (* | "/" *)
-  (*     { SLASH } *)
-  (* | "%" *)
-  (*     { PERCENT } *)
-  (* | "!" *)
-  (*     { BANG } *)
-  | "!"
-      { IMARK }
-  | "||"
-      { OR }
-  (* | "=" *)
-  (*     { EQ } *)
-  | ":="
-      { COLONEQ }
-  (* | ">" *)
-  (*     { COMP Bgt } *)
-  (* | ">=" *)
-  (*     { COMP Bge } *)
-  (* | "<" *)
-  (*     { COMP Blt } *)
-  (* | "<=" *)
-  (*     { COMP Ble } *)
-  (* | "==" *)
-  (*     { EQOP Beq } *)
-  (* | "!=" *)
-  (*     { EQOP Bneq } *)
-  (* | "++" *)
-  (*     { PLUSPLUS } *)
-  (* | "--" *)
-  (*     { MINUSMINUS } *)
-  | eof
-      { EOF }
+  | '(' { LPAR }
+  | ')' { RPAR }
+  | ';' { SEMICOLON }
+  | ',' { COMMA }
+  | ':' { COLON }
+  | "-" { MINUS }
+  | "+" { PLUS }
+  | "!" { IMARK }
+  | "||" { OR }
+  | ":=" { COLONEQ }
+  | eof { EOF }
   | _
       { raise (Lexical_error ("illegal character: " ^ lexeme lexbuf)) }
 and comment = parse

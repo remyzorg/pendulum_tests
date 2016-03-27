@@ -8,15 +8,29 @@ License:     MIT
 Plugins:     META (0.4), DevFiles (0.4)
 BuildTools:  ocamlbuild
 
-Executable esterel_parser
+Library esterel_parser
   Path:           parser
-  Install: true
+  Install: false
   BuildDepends:
     compiler-libs.common,
     ppx_tools.metaquot,
     pendulum.compiler,
     menhirLib
-  MainIs:       main.ml
+  Modules:
+    Esterel_ast,
+    Esterel_lexer,
+    Esterel_parser,
+    Pendulum_ast
   CompiledObject: best
 
     
+Executable runtest
+  Path:           runtest
+  Install: true
+  BuildDepends:
+    pendulum.compiler,
+    esterel_parser,
+    ANSITerminal
+
+  MainIs:         main.ml
+  CompiledObject: best

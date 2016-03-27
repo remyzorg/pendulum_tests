@@ -16,7 +16,7 @@
 
     let extract_test = function
       | EXTsignal s -> s, None, None
-      | EXTnot l -> failwith "Not implemented yet"
+      | EXTnot l -> Pendulum_ast.(test_error (Not_implemeted "EXTnot"))
 
 
 
@@ -49,6 +49,7 @@
 %token SUSPEND
 %token ABORT
 %token REPEAT
+%token AWAIT
 
 %token PRESENT
 %token CALL
@@ -128,14 +129,14 @@ decl_spec:
 
 
 decl:
-    | spec = decl_spec ; name = ident; COLON; _t = IDENT; SEMICOLON
-      { {spec; name} }
-    | spec = decl_spec ; name = ident; SEMICOLON
-      { {spec; name} }
+    | spec = decl_spec ; names = separated_nonempty_list(COMMA,
+                      id = ident; option(COLON; t = IDENT { t }) { id }); SEMICOLON
+        { Dvar {spec; names} }
+
     | PROCEDURE; name=ident; LPAR; outs = separated_list (COMMA, ident); RPAR
                          ; LPAR; ins = separated_list (COMMA, ident); RPAR
                          ; SEMICOLON
-      { { spec = Dprocedure (ins, outs); name } }
+      { Dprocedure (name, ins, outs) }
 ;
 
 case: CASE; t = test_presence; DO; p = program
@@ -166,7 +167,6 @@ elsif:
 program:
     | NOTHING
       { loc Ast.Nothing }
-
 
     | PAUSE
       { loc Ast.Pause }
@@ -208,41 +208,44 @@ program:
       { loc @@ Ast.Halt  }
 
     | PRESENT; t = test_presence; THEN; p_then = program
-                                ; p_else = option (ELSE; p_else = program { p_else });
-                                ; END;
+                                ; p_else = option (ELSE; p = program { p });
+                                ; END; option (PRESENT)
       { loc @@ match p_else with
         | Some p_else -> Ast.Present (extract_test t, p_then, p_else)
         | None -> Ast.Present_then (extract_test t, p_then)}
 
+    | AWAIT; t = test_presence
+       { loc @@ Ast.Await (extract_test t) }
+
     | SIGNAL; id = ident; IN; p = program; END; SIGNAL
       { loc @@ Ast.Signal (mk_vid id Pendulum_ast.unit_expr, p) }
 
-    | SIGNAL; l = separated_list (COMMA, ident); IN; p = program; END; SIGNAL
-      { assert false (* not implemented yet *)}
+    (* | SIGNAL; separated_nonempty_list (COMMA, ident); IN; p = program; END; SIGNAL *)
+    (*   { Pendulum_ast.(test_error (Not_implemeted "multiple signal definition")) } *)
 
     | IF; e = expr; THEN
                   ; p_then = program
                   ; elsifs = list(elsif)
                   ; p_else = option (ELSE; p_else = program { p_else } )
                   ; END; IF
-      { assert false (* not implemented yet *) }
+      { Pendulum_ast.(test_error (Not_implemeted "if-then-else")) }
 
-    | PRESENT; t = test_presence; l = nonempty_list (case); END; PRESENT
-      { assert false (* not implemented yet *) }
+    | PRESENT; t = test_presence; nonempty_list (case); END; PRESENT
+      { Pendulum_ast.(test_error (Not_implemeted "present cases")) }
 
     | CALL; _id=ident
           ; LPAR; _outs = separated_list(COMMA, ident); RPAR
           ; LPAR; _ins = separated_list(COMMA, expr); RPAR
-      { assert false (* not implemented yet *) }
+      { Pendulum_ast.(test_error (Not_implemeted "call procedure")) }
 
     | REPEAT; i = INTEGER; TIMES; p = program; END; REPEAT
-       { assert false (*not implemented yet *) }
+      { Pendulum_ast.(test_error (Not_implemeted "repeat")) }
 
-    | ABORT; p = program; WHEN; l = nonempty_list (case); END; ABORT;
-      {assert false (* not implemented yet *) (* loc @@ Ast.Abort (p, extract_test t) *)}
+    | ABORT; p = program; WHEN; nonempty_list (case); END; ABORT;
+      { Pendulum_ast.(test_error (Not_implemeted "abort cases")) }
 
     | lhs = ident; COLONEQ; rhs = ident
-      { assert false (* not implemented yet *) }
+      { Pendulum_ast.(test_error (Not_implemeted "assignation")) }
 
 
 

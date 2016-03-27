@@ -2,6 +2,7 @@
 %{
     open Esterel_ast
     open Pendulum_ast
+    open Pendulum_ast.Simpl_expr
 
     module Ast = Pendulum_ast.Derived
 
@@ -14,9 +15,11 @@
       mk_loc e Location.none
 
 
-    let extract_test = function
+    let extract_test =
+      function
       | EXTsignal s -> s, None, None
-      | EXTnot l -> Pendulum_ast.(test_error (Not_implemeted "EXTnot"))
+      | EXTnot signal -> Pendulum_ast.(test_error (Not_implemeted "presence negation"))
+      | EXTand (t1, t2) -> Pendulum_ast.(test_error (Not_implemeted "presence conjonction"))
 
 
 
@@ -34,6 +37,7 @@
 %token OUTPUT
 %token SIGNAL
 %token PROCEDURE
+%token RELATION
 %token INPUTOUTPUT
 %token END
 %token DO
@@ -63,7 +67,8 @@
 
 
 %token LPAR RPAR
-%token SEMICOLON COLON COMMA 
+%token LSB RSB
+%token SEMICOLON COLON COMMA
 %token EOF
 
 
@@ -79,9 +84,9 @@
 */
 
 %token COLONEQ
-%token OR NOT
+%token OR NOT AND
 %token CASE
-%token PLUS MINUS
+%token PLUS MINUS SHARP
 %token IMARK
 
 %right IMARK
@@ -127,6 +132,10 @@ decl_spec:
     | INPUTOUTPUT { Dinputoutput }
 ;
 
+signal_relation:
+    | ident SHARP ident {}
+;
+
 
 decl:
     | spec = decl_spec ; names = separated_nonempty_list(COMMA,
@@ -137,14 +146,23 @@ decl:
                          ; LPAR; ins = separated_list (COMMA, ident); RPAR
                          ; SEMICOLON
       { Dprocedure (name, ins, outs) }
+
+
+    | RELATION; separated_nonempty_list(COMMA, signal_relation); SEMICOLON;
+      { Pendulum_ast.(test_error (Not_implemeted "signal relations")) }
+
 ;
 
 case: CASE; t = test_presence; DO; p = program
         { assert false (* not implemented yet *) };
 
+
+
 test_presence:
     | NOT; t = test_presence { EXTnot t }
     | id = ident { EXTsignal id }
+    | t1 = test_presence; AND; t2 = test_presence { EXTand (t1, t2) }
+    | LSB; t = test_presence; RSB { t }
 ;
 
 expr:
@@ -180,6 +198,9 @@ program:
     | p1 = program; OR; p2 = program
       {loc @@ Ast.Par (p1, p2)}
 
+    | LSB; p1 = program; OR; p2 = program; RSB
+      {loc @@ Ast.Par (p1, p2)}
+
     | p = program ; SEMICOLON
       { p }
 
@@ -207,21 +228,24 @@ program:
     | HALT
       { loc @@ Ast.Halt  }
 
-    | PRESENT; t = test_presence; THEN; p_then = program
-                                ; p_else = option (ELSE; p = program { p });
+    | PRESENT; t = test_presence; p_then = option (THEN; p = program { p })
+                                ; p_else = option (ELSE; p = program { p })
                                 ; END; option (PRESENT)
-      { loc @@ match p_else with
-        | Some p_else -> Ast.Present (extract_test t, p_then, p_else)
-        | None -> Ast.Present_then (extract_test t, p_then)}
+      { loc @@ match p_then, p_else with
+        | None, _ -> Pendulum_ast.(test_error (Not_implemeted "no then case"))
+        | Some p_then, Some p_else -> Ast.Present (extract_test t, p_then, p_else)
+        | Some p_then, None -> Ast.Present_then (extract_test t, p_then)
+      }
 
     | AWAIT; t = test_presence
        { loc @@ Ast.Await (extract_test t) }
 
-    | SIGNAL; id = ident; IN; p = program; END; SIGNAL
-      { loc @@ Ast.Signal (mk_vid id Pendulum_ast.unit_expr, p) }
-
-    (* | SIGNAL; separated_nonempty_list (COMMA, ident); IN; p = program; END; SIGNAL *)
-    (*   { Pendulum_ast.(test_error (Not_implemeted "multiple signal definition")) } *)
+    | SIGNAL; sigs = separated_nonempty_list (COMMA, ident); IN; p = program; END; SIGNAL
+        {
+          List.fold_left (
+              fun acc id -> loc @@ Ast.Signal (mk_vid id Pendulum_ast.unit_expr, acc)
+            ) p sigs
+        }
 
     | IF; e = expr; THEN
                   ; p_then = program

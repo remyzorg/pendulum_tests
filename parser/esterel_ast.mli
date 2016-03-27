@@ -18,11 +18,6 @@ type decl = Dvar of decl_var | Dprocedure of ident * ident list * ident list
 
 type case = EXTcase
 
-type extended_tests =
-  | EXTsignal of ident
-  | EXTnot of extended_tests
-  (* | EXTcases of case list *)
-
 type decls = decl list
 
 type emodule = {

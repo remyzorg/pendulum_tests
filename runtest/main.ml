@@ -39,7 +39,10 @@ let parse acc f =
       printf okstyle "OK\n";
       p :: acc
     with
-    | e -> printf kostyle "KO\n";
+    | Pendulum_ast.Test_error err ->
+      printf [ANSITerminal.yellow] "~~~ \t";
+      printf normal "%s\n" (Format.asprintf "%a" Pendulum_ast.print_test_error err); acc
+    | e -> printf kostyle "KO: \t";
       begin match e with
         | Esterel_lexer.Lexical_error s ->
           report_loc f (lexeme_start_p lb, lexeme_end_p lb);

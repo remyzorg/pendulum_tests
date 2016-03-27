@@ -6,7 +6,7 @@ type test_error = Not_implemeted of string
 
 exception Test_error of test_error
 
-let print_exception fmt = function
+let print_test_error fmt = function
   | Not_implemeted s -> Format.fprintf fmt "Not implemented yet : %s" s
 
 let test_error e = raise (Test_error e)
@@ -29,6 +29,12 @@ module Simpl_expr = struct
     | EXPvalue of esterel_expr
     | EXPlit of literal
     | EXPop of op * esterel_expr * esterel_expr
+
+
+  type extended_tests =
+    | EXTsignal of ident
+    | EXTnot of extended_tests
+    | EXTand of extended_tests * extended_tests
 
 
   let lit_to_ocaml lit =

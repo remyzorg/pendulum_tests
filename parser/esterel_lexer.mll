@@ -21,8 +21,10 @@ let id_or_keyword =
     ; "then", THEN
     ; "do", DO
     ; "not", NOT
+    ; "and", AND
     ; "constant", CONSTANT
     ; "procedure", PROCEDURE
+    ; "relation", RELATION
 
     ; "emit", EMIT
     ; "times", TIMES
@@ -37,6 +39,7 @@ let id_or_keyword =
     ; "await", AWAIT
     ; "if", IF
     ; "elsif", ELSIF
+    ; "else", ELSE
     ; "present", PRESENT
     ; "call", CALL
     ; "nothing", NOTHING
@@ -111,6 +114,8 @@ rule token = parse
         string lexbuf }
   | '(' { LPAR }
   | ')' { RPAR }
+  | '[' { LSB }
+  | ']' { RSB }
   | ';' { SEMICOLON }
   | ',' { COMMA }
   | ':' { COLON }
@@ -118,6 +123,7 @@ rule token = parse
   | "+" { PLUS }
   | "!" { IMARK }
   | "||" { OR }
+  | "#" { SHARP }
   | ":=" { COLONEQ }
   | eof { EOF }
   | _

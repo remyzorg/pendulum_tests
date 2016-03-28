@@ -14,14 +14,18 @@ let id_or_keyword =
     [ "module", MODULE
     ; "input", INPUT
     ; "output", OUTPUT
+    ; "inputoutput", INPUTOUTPUT
     ; "end", END
     ; "when", WHEN
     ; "case", CASE
+    ; "handle", HANDLE
     ; "in", IN
     ; "then", THEN
     ; "do", DO
     ; "not", NOT
     ; "and", AND
+    ; "tick", TICK
+    ; "or", OR
     ; "constant", CONSTANT
     ; "procedure", PROCEDURE
     ; "relation", RELATION
@@ -30,10 +34,12 @@ let id_or_keyword =
     ; "times", TIMES
     ; "loop", LOOP
     ; "every", EVERY
+    ; "run", RUN
     ; "trap", TRAP
     ; "exit", EXIT
     ; "suspend", SUSPEND
     ; "signal", SIGNAL
+    ; "var", VAR
     ; "abort", ABORT
     ; "repeat", REPEAT
     ; "await", AWAIT
@@ -121,10 +127,11 @@ rule token = parse
   | ':' { COLON }
   | "-" { MINUS }
   | "+" { PLUS }
-  | "!" { IMARK }
-  | "||" { OR }
+  | "?" { IMARK }
+  | "||" { BARBAR }
   | "#" { SHARP }
   | ":=" { COLONEQ }
+  | "=" { EQ }
   | eof { EOF }
   | _
       { raise (Lexical_error ("illegal character: " ^ lexeme lexbuf)) }

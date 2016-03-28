@@ -7,14 +7,16 @@ type decl_spec =
   | Doutput
   | Dinput
   | Dinputoutput
-  | Dconstant
 
-type decl_var = {
+type decl_sig = {
   spec : decl_spec;
   names : ident list;
 }
 
-type decl = Dvar of decl_var | Dprocedure of ident * ident list * ident list
+type decl =
+  | Dsig of decl_sig
+  | Dprocedure of ident * ident list * ident list
+  | Dconstant of (ident * Simpl_expr.esterel_expr option * ident option) list
 
 type case = EXTcase
 

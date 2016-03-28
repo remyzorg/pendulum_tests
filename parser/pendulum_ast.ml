@@ -35,6 +35,8 @@ module Simpl_expr = struct
     | EXTsignal of ident
     | EXTnot of extended_tests
     | EXTand of extended_tests * extended_tests
+    | EXTor of extended_tests * extended_tests
+    | EXTtick of int
 
 
   let lit_to_ocaml lit =
@@ -43,12 +45,21 @@ module Simpl_expr = struct
     | Lstring s -> Exp.constant (Asttypes.Const_string(s, None))
     | Linteger i -> Exp.constant (Asttypes.Const_int i)
 
-  let rec to_pendulum e = match e.content with
+  let rec to_ocaml e = match e.content with
     | EXPident id -> Sync2ml.Ocaml_gen.mk_ident id
-    | EXPapp (fn, exp) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_pendulum exp]]
-    | EXPvalue vexpr -> [%expr !![%e to_pendulum vexpr]]
+    | EXPapp (fn, exp) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_ocaml exp]]
+    | EXPvalue vexpr -> [%expr !![%e to_ocaml vexpr]]
     | EXPlit lit -> lit_to_ocaml lit
     | _ -> assert false (* not implemented yet *)
+
+  let extract_test =
+    function
+    | EXTsignal s -> s, None, None
+    | EXTnot signal -> test_error (Not_implemeted "presence negation")
+    | EXTand (t1, t2) -> test_error (Not_implemeted "presence conjonction")
+    | EXTor (t1, t2) -> test_error (Not_implemeted "presence disjonction")
+    | EXTtick i -> test_error (Not_implemeted "presence ticks")
+
 
 
 

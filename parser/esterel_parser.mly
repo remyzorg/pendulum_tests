@@ -58,8 +58,7 @@
 %token IF
 %token ELSIF
 %token ELSE
-%token TICK
-
+%token IMMEDIATE
 
 %token LPAR RPAR
 %token LSB RSB
@@ -77,8 +76,8 @@
 %token LBRACE RBRACE LSQUARE RSQUARE
 */
 
-%token EQ
 %token COLONEQ
+%token EQ
 %token BARBAR NOT AND OR
 %token CASE HANDLE
 %token PLUS MINUS SHARP
@@ -89,10 +88,10 @@
 %left AND OR
 %right NOT
 %left SEMICOLON
+%left EQ
 %left PLUS MINUS             /* + - */
 
 /*
-%left COLONEQ
 %nonassoc THEN
 %nonassoc ELSE
 %left CASE
@@ -132,10 +131,24 @@ signal_relation:
     | hd = ident SHARP tl = separated_nonempty_list(SHARP, ident) { hd :: tl }
 ;
 
+val_init:
+    | EQ; e = expr
+    | COLONEQ; e = expr
+      { e }
+;
+
+vars_init:
+    | names = separated_nonempty_list(COMMA,
+        id = ident; v = option(val_init); t = option(COLON; ident { $2 })
+          { id, v, t }
+      )
+      { names }
+;
+
 
 decl:
     | spec = decl_spec ; names = separated_nonempty_list(COMMA,
-                      id = ident; option(COLON; t = IDENT { t }) { id }); SEMICOLON
+                      id = ident; option(COLON; ident { $2 }) { id }); SEMICOLON
         { Dsig {spec; names} }
     | PROCEDURE; name=ident; LPAR; outs = separated_list (COMMA, ident); RPAR
                          ; LPAR; ins = separated_list (COMMA, ident); RPAR
@@ -143,10 +156,7 @@ decl:
       { Dprocedure (name, ins, outs) }
     | RELATION; separated_nonempty_list(COMMA, signal_relation); SEMICOLON;
       { Pendulum_ast.(test_error (Not_implemeted "signal relations")) }
-    | CONSTANT ; names = separated_nonempty_list(COMMA, id = ident;
-                           value = option(EQ; value = expr { value });
-                           t = option(COLON; t = ident { t }) { id, value, t }); SEMICOLON
-        { Dconstant names }
+    | CONSTANT ; names = vars_init; SEMICOLON { Dconstant names }
 
 ;
 
@@ -163,8 +173,9 @@ test_presence_expr:
 
 test_presence:
     | id = ident { EXTsignal id }
+    | IMMEDIATE; id = ident { EXTimm id }
     | LSB; t = test_presence_expr; RSB { t }
-    | i = INTEGER; TICK { EXTtick i }
+    | i = INTEGER; id = ident { EXTtick (id, i) }
 ;
 
 expr:
@@ -175,9 +186,10 @@ expr:
     | s = STRING { loc @@ Simpl_expr.(EXPlit (Lstring s)) }
     | e1 = expr; PLUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPplus, e1, e2)) }
     | e1 = expr; MINUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPminus, e1, e2)) }
+    | e1 = expr EQ; e2 = expr { loc @@ Simpl_expr.(EXPop (OPeq, e1, e2))  }
 ;
 
-label_expr:
+label_test_expr:
     | id = ident {  }
     | id1 = ident; AND; id2 = ident {  }
 ;
@@ -188,7 +200,7 @@ elsif:
 ;
 
 handle_case:
-    | HANDLE; label_expr; DO; p = program { p }
+    | HANDLE; label_test_expr; DO; p = program { p }
 ;
 
 program:
@@ -213,12 +225,13 @@ program:
     | p = program ; SEMICOLON
       { p }
 
-    | TRAP; labels = separated_nonempty_list(COMMA, ident); IN; p = program;
-                     handles = list(handle_case);
-                     END; option (TRAP)
+    | TRAP; vars = vars_init ; IN
+          ; p = program
+          ; handles = list(handle_case)
+          ; END; option (TRAP)
       {
-        if handles != [] then Pendulum_ast.(test_error (Not_implemeted "handle"))
-        else List.fold_left (fun acc id -> loc @@ Ast.Trap (Label id, acc)) p labels
+        if handles != [] then Pendulum_ast.(test_error (Not_implemeted "handle trap"))
+        else List.fold_left (fun acc (id, v, t) -> loc @@ Ast.Trap (Label id, acc)) p vars
       }
 
     | ABORT; p = program; WHEN; t = test_presence; END; ABORT;
@@ -236,8 +249,11 @@ program:
     | EVERY; t = test_presence; DO; p = program; END; EVERY
       { loc @@ Ast.Every (extract_test t, p) }
 
-    | EXIT; id = ident
-      { loc @@ Ast.Exit (Label id) }
+    | EXIT; id = ident; v = option (LPAR; expr; RPAR { $2 });
+      {
+        match v with None -> loc @@ Ast.Exit (Label id)
+        | Some _ -> Pendulum_ast.(test_error (Not_implemeted "label values"))
+      }
 
     | HALT
       { loc @@ Ast.Halt  }
@@ -269,7 +285,7 @@ program:
     | RUN; id = ident
       { Pendulum_ast.(test_error (Not_implemeted "run")) }
 
-    | VAR; id = ident; COLON; ident; IN; p = program; END; SIGNAL
+    | VAR; id = ident; COLON; ident; IN; p = program; END; option (VAR)
       { Pendulum_ast.(test_error (Not_implemeted "var")) }
 
     | IF; e = expr; THEN
@@ -293,7 +309,7 @@ program:
     | ABORT; p = program; WHEN; nonempty_list (case); END; ABORT;
       { Pendulum_ast.(test_error (Not_implemeted "abort cases")) }
 
-    | lhs = ident; COLONEQ; rhs = ident
+    | lhs = ident; COLONEQ; rhs = expr
       { Pendulum_ast.(test_error (Not_implemeted "assignation")) }
 
 

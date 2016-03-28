@@ -24,8 +24,8 @@ let id_or_keyword =
     ; "do", DO
     ; "not", NOT
     ; "and", AND
-    ; "tick", TICK
     ; "or", OR
+    ; "immediate", IMMEDIATE
     ; "constant", CONSTANT
     ; "procedure", PROCEDURE
     ; "relation", RELATION

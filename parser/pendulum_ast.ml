@@ -20,7 +20,7 @@ module Simpl_expr = struct
     | Lstring of string
     | Linteger of int
 
-  type op = OPplus | OPminus
+  type op = OPplus | OPminus | OPeq
 
   type esterel_expr = esterel_expr_tree location
   and esterel_expr_tree =
@@ -36,7 +36,8 @@ module Simpl_expr = struct
     | EXTnot of extended_tests
     | EXTand of extended_tests * extended_tests
     | EXTor of extended_tests * extended_tests
-    | EXTtick of int
+    | EXTimm of ident
+    | EXTtick of ident * int
 
 
   let lit_to_ocaml lit =
@@ -45,20 +46,26 @@ module Simpl_expr = struct
     | Lstring s -> Exp.constant (Asttypes.Const_string(s, None))
     | Linteger i -> Exp.constant (Asttypes.Const_int i)
 
+  let op_to_ocaml = function
+    | OPplus -> [%expr (+)]
+    | OPminus -> [%expr (-)]
+    | OPeq -> [%expr (=)]
+
   let rec to_ocaml e = match e.content with
     | EXPident id -> Sync2ml.Ocaml_gen.mk_ident id
-    | EXPapp (fn, exp) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_ocaml exp]]
-    | EXPvalue vexpr -> [%expr !![%e to_ocaml vexpr]]
+    | EXPapp (fn, e) -> [%expr [%e Sync2ml.Ocaml_gen.mk_ident fn] [%e to_ocaml e]]
+    | EXPvalue e -> [%expr !![%e to_ocaml e]]
     | EXPlit lit -> lit_to_ocaml lit
-    | _ -> assert false (* not implemented yet *)
+    | EXPop (op, e1, e2) -> [%expr [%e op_to_ocaml op] [to_ocaml e1] [to_ocaml e2]]
 
   let extract_test =
     function
-    | EXTsignal s -> s, None, None
+    | EXTsignal id -> id, None, None
     | EXTnot signal -> test_error (Not_implemeted "presence negation")
     | EXTand (t1, t2) -> test_error (Not_implemeted "presence conjonction")
     | EXTor (t1, t2) -> test_error (Not_implemeted "presence disjonction")
-    | EXTtick i -> test_error (Not_implemeted "presence ticks")
+    | EXTimm s -> test_error (Not_implemeted "immediate")
+    | EXTtick (id, i) -> test_error (Not_implemeted "presence ticks")
 
 
 

@@ -294,15 +294,12 @@ program:
     | VAR; vars_init IN; p = program; END; VAR
       { Pendulum_ast.(test_error (Not_implemeted "var")) }
 
-    | IF; e = expr; THEN
-                  ; p_then = program
-                  ; elsifs = list(elsif)
-                  ; p_else = option (ELSE; p_else = program { p_else } )
-                  ; END; IF
+    | IF; e = expr; THEN ; p_then = program ; elsifs = list(elsif)
+        ; p_else = option (ELSE; p_else = program { p_else } ) END IF
       { Pendulum_ast.(test_error (Not_implemeted "if-then-else")) }
 
 
-    | CALL; _id=ident
+    | CALL; _id = ident
           ; LPAR; _outs = separated_list(COMMA, ident); RPAR
           ; LPAR; _ins = separated_list(COMMA, expr); RPAR
       { Pendulum_ast.(test_error (Not_implemeted "call procedure")) }

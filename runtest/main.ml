@@ -26,8 +26,7 @@ let () = Arg.parse spec add_dir usage
 let firsts n l =
   let rec aux acc i l =
     match i, l with
-    | _ , [] -> acc
-    | 0 , h :: t -> h :: acc
+    | _ , [] | 0 , _ -> acc
     | _ , h :: t -> aux (h :: acc) (i - 1) t
   in if n >= 0 then List.rev @@ aux [] n l else l
 
@@ -43,8 +42,9 @@ let report_loc file (b,e) =
 let test_files num testdir =
   Sys.readdir testdir
   |> Array.to_list
-  |> firsts num
   |> List.filter (!%Filename.check_suffix "strl")
+  |> List.filter Filename.(fun x -> not @@ check_suffix (chop_extension x) "unhandled" )
+  |> firsts num
   |> List.map ((^) Filename.(basename testdir ^ dir_sep))
 
 let parse max (nerr, notimpl, acc) f =

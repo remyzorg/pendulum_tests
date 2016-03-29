@@ -22,47 +22,19 @@
 
 %token <string> IDENT
 %token <int> INTEGER
+%token <string> FLOAT
 %token <string> STRING
 
+%token MODULE INPUT OUTPUT SENSOR PROCEDURE FUNCTION
+%token RELATION INPUTOUTPUT CONSTANT TYPE
+%token SIGNAL VAR
+%token END DO IN WHEN EACH
 
-%token MODULE
-%token INPUT
-%token OUTPUT
-%token SIGNAL
-%token VAR
-%token PROCEDURE
-%token RELATION
-%token INPUTOUTPUT
-%token END
-%token DO
-%token IN
-%token WHEN
-%token CONSTANT
-%token EMIT
-%token LOOP
-%token EVERY
-%token TIMES
-%token TRAP
-%token EXIT
-%token SUSPEND
-%token ABORT
-%token RUN
-%token REPEAT
-%token AWAIT
-%token PRESENT
-%token CALL
-%token NOTHING
-%token PAUSE
-%token HALT
-%token THEN
-%token IF
-%token ELSIF
-%token ELSE
-%token IMMEDIATE
+%token EMIT LOOP EVERY TIMES TRAP EXIT SUSPEND SUSTAIN ABORT RUN REPEAT UPTO
+%token AWAIT PRESENT CALL NOTHING PAUSE HALT THEN IF ELSIF ELSE WEAK POSITIVE
 
-%token LPAR RPAR
-%token LSB RSB
-%token SEMICOLON COLON COMMA
+%token LPAR RPAR LSB RSB
+%token SEMICOLON COLON COMMA DOT
 %token EOF
 
 
@@ -78,7 +50,8 @@
 
 %token COLONEQ
 %token EQ
-%token BARBAR NOT AND OR
+%token EQGT
+%token BARBAR NOT PRE AND OR IMMEDIATE
 %token CASE HANDLE
 %token PLUS MINUS SHARP
 %token IMARK
@@ -87,9 +60,11 @@
 %left BARBAR /* || */
 %left AND OR
 %right NOT
+%right IMMEDIATE
 %left SEMICOLON
 %left EQ
 %left PLUS MINUS             /* + - */
+%right uminus uplus
 
 /*
 %nonassoc THEN
@@ -111,8 +86,13 @@
 
 emodules: | l = list(emodule); EOF { l } ;
 
+end_module:
+    | DOT        {}
+    | END MODULE {}
+;
+
 emodule:
-    | MODULE; name = ident; COLON; decls = list(decl); program = program; END; MODULE
+    | MODULE; name = ident; COLON; decls = list(decl); program = program; end_module
       { {name; decls; program}  }
 ;
 
@@ -125,10 +105,13 @@ decl_spec:
     | INPUT { Dinput }
     | OUTPUT { Doutput }
     | INPUTOUTPUT { Dinputoutput }
+    | SENSOR
+      { Pendulum_ast.(test_error (Not_implemeted "sensor")) }
 ;
 
 signal_relation:
     | hd = ident SHARP tl = separated_nonempty_list(SHARP, ident) { hd :: tl }
+    | id1 = ident EQGT id2 = ident { [id1; id2] }
 ;
 
 val_init:
@@ -148,15 +131,22 @@ vars_init:
 
 decl:
     | spec = decl_spec ; names = separated_nonempty_list(COMMA,
-                      id = ident; option(COLON; ident { $2 }) { id }); SEMICOLON
+                           id = ident; option (LPAR; ident; RPAR { $2 }); option(val_init);
+                           option(COLON; ident { $2 }) { id }); SEMICOLON
         { Dsig {spec; names} }
     | PROCEDURE; name=ident; LPAR; outs = separated_list (COMMA, ident); RPAR
                          ; LPAR; ins = separated_list (COMMA, ident); RPAR
                          ; SEMICOLON
       { Dprocedure (name, ins, outs) }
+
+    | FUNCTION; name=ident; LPAR; separated_list (COMMA, ident); RPAR
+                          ; COLON ident SEMICOLON
+      { Pendulum_ast.(test_error (Not_implemeted "function")) }
+
     | RELATION; separated_nonempty_list(COMMA, signal_relation); SEMICOLON;
       { Pendulum_ast.(test_error (Not_implemeted "signal relations")) }
     | CONSTANT ; names = vars_init; SEMICOLON { Dconstant names }
+    | TYPE; id = ident; SEMICOLON { Dtype id }
 
 ;
 
@@ -167,26 +157,31 @@ case: CASE; t = test_presence; p = option (DO; p = program { p })
 test_presence_expr:
     | NOT; t = test_presence_expr { EXTnot t }
     | id = ident { EXTsignal id }
+    | PRE; LPAR; id = ident; RPAR; { EXTpre id }
     | t1 = test_presence_expr; AND; t2 = test_presence_expr { EXTand (t1, t2) }
     | t1 = test_presence_expr; OR; t2 = test_presence_expr { EXTor (t1, t2) }
+    | LSB; t = test_presence_expr; RSB { t }
+    | IMMEDIATE; t = test_presence_expr { EXTimm t }
 ;
 
 test_presence:
-    | id = ident { EXTsignal id }
-    | IMMEDIATE; id = ident { EXTimm id }
-    | LSB; t = test_presence_expr; RSB { t }
+    | t = test_presence_expr { t }
     | i = INTEGER; id = ident { EXTtick (id, i) }
 ;
 
 expr:
     | id = ident { loc @@ Simpl_expr.EXPident id }
-    | IMARK; e = expr { loc @@ Simpl_expr.EXPvalue e }
     | fn = ident ; LPAR; e = expr; RPAR { loc @@ Simpl_expr.EXPapp (fn, e) }
     | i = INTEGER { loc @@ Simpl_expr.(EXPlit (Linteger i)) }
+    | f = FLOAT { loc @@ Simpl_expr.(EXPlit (Lfloat f)) }
     | s = STRING { loc @@ Simpl_expr.(EXPlit (Lstring s)) }
     | e1 = expr; PLUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPplus, e1, e2)) }
     | e1 = expr; MINUS; e2 = expr { loc @@ Simpl_expr.(EXPop (OPminus, e1, e2)) }
+    | MINUS; e = expr %prec uminus { loc @@ Simpl_expr.(EXPunop (Uminus, e)) }
+    | PLUS; e = expr %prec uplus { loc @@ Simpl_expr.(EXPunop (Uplus, e)) }
+    | IMARK; e = expr { loc @@ Simpl_expr.(EXPunop (Uvalue, e)) }
     | e1 = expr EQ; e2 = expr { loc @@ Simpl_expr.(EXPop (OPeq, e1, e2))  }
+    | e1 = expr AND e2 = expr { loc @@ Simpl_expr.(EXPop (OPand, e1, e2))  }
 ;
 
 label_test_expr:
@@ -213,14 +208,16 @@ program:
     | LOOP; p = program; END; option (LOOP)
       { loc @@ Ast.Loop p }
 
+    | LOOP; p = program; EACH; t = test_presence
+      { loc @@ Ast.Loop_each (p, Simpl_expr.extract_test t) }
+
     | p1 = program; SEMICOLON; p2 = program
       {loc @@ Ast.Seq (p1, p2)}
 
     | p1 = program; BARBAR; p2 = program
       {loc @@ Ast.Par (p1, p2)}
 
-    | LSB; p1 = program; BARBAR; p2 = program; RSB
-      {loc @@ Ast.Par (p1, p2)}
+    | LSB; p = program; RSB { p }
 
     | p = program ; SEMICOLON
       { p }
@@ -228,17 +225,23 @@ program:
     | TRAP; vars = vars_init ; IN
           ; p = program
           ; handles = list(handle_case)
-          ; END; option (TRAP)
+          ; END; TRAP
       {
         if handles != [] then Pendulum_ast.(test_error (Not_implemeted "handle trap"))
         else List.fold_left (fun acc (id, v, t) -> loc @@ Ast.Trap (Label id, acc)) p vars
       }
 
-    | ABORT; p = program; WHEN; t = test_presence; END; ABORT;
+    | ABORT; p = program; WHEN; t = test_presence
       { loc @@ Ast.Abort (p, extract_test t) }
+
+    | WEAK; ABORT; p = program; WHEN; t = test_presence
+      { loc @@ Ast.Weak_abort (p, extract_test t) }
 
     | SUSPEND; p = program; WHEN; t = test_presence
       { loc @@ Ast.Suspend (p, extract_test t)}
+
+    | SUSTAIN; id = ident;
+      { loc @@ Ast.Sustain (mk_vid id Pendulum_ast.unit_expr) }
 
     | EMIT; id = ident;
       { loc @@ Ast.Emit (mk_vid id Pendulum_ast.unit_expr) }
@@ -246,7 +249,7 @@ program:
     | EMIT; id = ident; LPAR; e = expr; RPAR
       { loc @@ Ast.Emit (mk_vid id @@ Simpl_expr.to_ocaml e) }
 
-    | EVERY; t = test_presence; DO; p = program; END; EVERY
+    | EVERY; t = test_presence; DO; p = program; END; option (EVERY)
       { loc @@ Ast.Every (extract_test t, p) }
 
     | EXIT; id = ident; v = option (LPAR; expr; RPAR { $2 });
@@ -257,9 +260,6 @@ program:
 
     | HALT
       { loc @@ Ast.Halt  }
-
-    | PRESENT; l = nonempty_list (case) ; END; PRESENT
-      { Pendulum_ast.(test_error (Not_implemeted "presence case tests")) }
 
     | PRESENT; t = test_presence; p_then = option (THEN; p = program { p })
                                 ; p_else = option (ELSE; p = program { p })
@@ -275,17 +275,23 @@ program:
     | AWAIT; t = test_presence
        { loc @@ Ast.Await (extract_test t) }
 
-    | SIGNAL; sigs = separated_nonempty_list (COMMA, ident); IN; p = program; END; SIGNAL
+    | AWAIT; t = test_presence; DO; p = program; END AWAIT
+       { loc @@ Ast.Seq ((loc @@ Ast.Await (extract_test t)), p) }
+
+    | SIGNAL; sigs = vars_init IN; p = program; END; SIGNAL
         {
           List.fold_left (
-              fun acc id -> loc @@ Ast.Signal (mk_vid id Pendulum_ast.unit_expr, acc)
+              fun acc (id, v, _)->
+              let v = match v with None -> Pendulum_ast.unit_expr
+                                 | Some v -> Simpl_expr.to_ocaml v
+              in loc @@ Ast.Signal (mk_vid id v, acc)
             ) p sigs
         }
 
     | RUN; id = ident
       { Pendulum_ast.(test_error (Not_implemeted "run")) }
 
-    | VAR; id = ident; COLON; ident; IN; p = program; END; option (VAR)
+    | VAR; vars_init IN; p = program; END; VAR
       { Pendulum_ast.(test_error (Not_implemeted "var")) }
 
     | IF; e = expr; THEN
@@ -295,19 +301,29 @@ program:
                   ; END; IF
       { Pendulum_ast.(test_error (Not_implemeted "if-then-else")) }
 
-    | PRESENT; t = test_presence; nonempty_list (case); END; PRESENT
-      { Pendulum_ast.(test_error (Not_implemeted "present cases")) }
 
     | CALL; _id=ident
           ; LPAR; _outs = separated_list(COMMA, ident); RPAR
           ; LPAR; _ins = separated_list(COMMA, expr); RPAR
       { Pendulum_ast.(test_error (Not_implemeted "call procedure")) }
 
-    | REPEAT; i = INTEGER; TIMES; p = program; END; REPEAT
+    | option (POSITIVE); REPEAT; i = INTEGER; TIMES; p = program; END; REPEAT
       { Pendulum_ast.(test_error (Not_implemeted "repeat")) }
 
+    | DO program UPTO ident
+      { Pendulum_ast.(test_error (Not_implemeted "upto")) }
+
+    | AWAIT nonempty_list (case) END
+      { Pendulum_ast.(test_error (Not_implemeted "presence case tests")) }
+
     | ABORT; p = program; WHEN; nonempty_list (case); END; ABORT;
-      { Pendulum_ast.(test_error (Not_implemeted "abort cases")) }
+      { Pendulum_ast.(test_error (Not_implemeted "presence case tests")) }
+
+    | WEAK; ABORT; p = program; WHEN; nonempty_list (case); END; WEAK; ABORT;
+      { Pendulum_ast.(test_error (Not_implemeted "presence case tests")) }
+
+    | PRESENT; l = nonempty_list (case) ; END; PRESENT
+      { Pendulum_ast.(test_error (Not_implemeted "presence case tests")) }
 
     | lhs = ident; COLONEQ; rhs = expr
       { Pendulum_ast.(test_error (Not_implemeted "assignation")) }

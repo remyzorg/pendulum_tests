@@ -16,7 +16,7 @@ abort
   emit A;
   pause;
   emit B;
-  pause
+  pause;
   emit C
 when
   case immediate D do

@@ -17,6 +17,7 @@ type decl =
   | Dsig of decl_sig
   | Dprocedure of ident * ident list * ident list
   | Dconstant of (ident * Simpl_expr.esterel_expr option * ident option) list
+  | Dtype of ident
 
 type case = EXTcase
 

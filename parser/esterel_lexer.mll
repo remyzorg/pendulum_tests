@@ -13,22 +13,28 @@ let id_or_keyword =
   List.iter (fun (str, kw) -> Hashtbl.add h str kw)
     [ "module", MODULE
     ; "input", INPUT
+    ; "sensor", SENSOR
     ; "output", OUTPUT
     ; "inputoutput", INPUTOUTPUT
     ; "end", END
     ; "when", WHEN
+    ; "each", EACH
     ; "case", CASE
     ; "handle", HANDLE
     ; "in", IN
     ; "then", THEN
     ; "do", DO
     ; "not", NOT
+    ; "pre", PRE
     ; "and", AND
     ; "or", OR
     ; "immediate", IMMEDIATE
+    ; "weak", WEAK
     ; "constant", CONSTANT
     ; "procedure", PROCEDURE
+    ; "function", FUNCTION
     ; "relation", RELATION
+    ; "type", TYPE
 
     ; "emit", EMIT
     ; "times", TIMES
@@ -36,12 +42,14 @@ let id_or_keyword =
     ; "every", EVERY
     ; "run", RUN
     ; "trap", TRAP
+    ; "upto", UPTO
     ; "exit", EXIT
     ; "suspend", SUSPEND
     ; "signal", SIGNAL
     ; "var", VAR
     ; "abort", ABORT
     ; "repeat", REPEAT
+    ; "positive", POSITIVE
     ; "await", AWAIT
     ; "if", IF
     ; "elsif", ELSIF
@@ -51,6 +59,7 @@ let id_or_keyword =
     ; "nothing", NOTHING
     ; "pause", PAUSE
     ; "halt", HALT
+    ; "sustain", SUSTAIN
     ];
   fun s -> try Hashtbl.find h s with Not_found -> IDENT s
 
@@ -113,6 +122,20 @@ rule token = parse
 	with _ ->
 	  raise (Lexical_error ("invalid integer constant '" ^ s ^ "'"))
       }
+  | (digit+ "." digit+) as s
+      {
+	try
+	  FLOAT s
+	with _ ->
+	  raise (Lexical_error ("invalid float constant '" ^ s ^ "'"))
+      }
+  | ((digit+ "." digit+) as s) "f"
+      {
+	try
+	  FLOAT s
+	with _ ->
+	  raise (Lexical_error ("invalid float constant '" ^ s ^ "'"))
+      }
   | '\'' (char as s) '\''
       { INTEGER (decode_char s) }
   | '\"'
@@ -124,6 +147,7 @@ rule token = parse
   | ']' { RSB }
   | ';' { SEMICOLON }
   | ',' { COMMA }
+  | '.' { DOT }
   | ':' { COLON }
   | "-" { MINUS }
   | "+" { PLUS }
@@ -132,6 +156,7 @@ rule token = parse
   | "#" { SHARP }
   | ":=" { COLONEQ }
   | "=" { EQ }
+  | "=>" { EQGT }
   | eof { EOF }
   | _
       { raise (Lexical_error ("illegal character: " ^ lexeme lexbuf)) }
